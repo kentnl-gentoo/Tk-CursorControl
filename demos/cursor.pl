@@ -5,15 +5,16 @@ use Tk::CursorControl;
 
 use vars qw/$TOP/;
 use subs qw/toggleit warpit items_start_drag items_drag/;
-use vars qw/$dir $cursor $direction $trans $place %info $jail %wid $event $r $c @coords/;
+use vars qw/$temptime $movetime $timescale $timewarp $dir $cursor $direction
+$trans $place %info $jail %wid $event $r $c @coords/;
 
 
 sub cursor {
         my ($demo) = @_;
 my $text = qq/
-Warp, confine and hide your mouse pointer!
-Use the controls below to warp
-(aka 'move') the cursor to any part of the screen
+Warp, move, confine and hide your mouse pointer!
+Use the controls below to warp or move
+the cursor to any part of the screen
 or any part of a widget. The nine Radiobuttons and
 the Optionmenu are used to control your target. 
 You can also make the cursor
@@ -62,13 +63,14 @@ $wid{canvas}->Tk::bind('<B1-Motion>' =>
         sub {&items_drag ($Tk::event->x, $Tk::event->y);});
 $wid{canvas}->Tk::bind('<ButtonRelease-1>' =>
         sub {$cursor->release if ($jail);});
-     
+
 $TOP->Button(
-    -text => 'WARP !',
-    -command=>\&warpit)->grid(
-    -row=>3,
+    -text => 'DO IT',
+    -background=>'lightgreen',
+    -command=>\&doit)->grid(
+    -row=>4,
     -column=>3,
-    -rowspan=>2,
+    -rowspan=>1,
     -sticky=>'nsew');
 
 $dir = {
@@ -112,35 +114,81 @@ $TOP->Checkbutton(
 $TOP->Checkbutton(
     -text=>"Confine Cursor",
     -variable=>\$jail)->grid(-row=>2, -column=>3, -sticky=>'w');
-
+$timescale=$TOP->Scale(
+	-variable=>\$movetime,
+	-resolution=>0.5,
+	-label=>"Time (s)",
+	-orient=>'vertical',
+	-from=>5, -to=>0,
+	-width=>10)->grid(
+	-row=>1, -column=>4, -rowspan=>4);
+$TOP->Checkbutton(
+    -text=>"Time Warp",
+    -variable=>\$timewarp,
+    -command=>sub { ($timewarp)?($timescale->configure(-state=>'normal') ):
+		($timescale->configure(-state=>'disabled') ) }
+    )->grid(-row=>3, -column=>3, -sticky=>'w');
+$timewarp=1;
+$movetime=1;
 }
 
 sub toggleit {
    	$cursor->${trans}($wid{canvas});
 }
 
-sub warpit {
+sub doit {
     if ($place eq 'Screen'){
-        $cursor->warpto(
-            $TOP->screenwidth*$dir->{$direction}[0],
-            $TOP->screenheight*$dir->{$direction}[1]
-        );
+	if ($timewarp) {
+            $temptime=$movetime*1000;
+            $cursor->moveto(
+                $TOP->screenwidth*$dir->{$direction}[0],
+                $TOP->screenheight*$dir->{$direction}[1],
+	        -time=>$temptime
+            );	    
+	}
+	else {
+            $cursor->warpto(
+                $TOP->screenwidth*$dir->{$direction}[0],
+                $TOP->screenheight*$dir->{$direction}[1]
+            );
+        }
     }
     elsif($place eq 'Canvas'){
-        $cursor->warpto(
-            $wid{canvas},
-            $wid{canvas}->width  * $dir->{$direction}[0],
-            $wid{canvas}->height * $dir->{$direction}[1]
-        );
+	if ($timewarp) {
+            $temptime=$movetime*1000;
+            $cursor->moveto(
+                $wid{canvas},
+                $wid{canvas}->width  * $dir->{$direction}[0],
+                $wid{canvas}->height * $dir->{$direction}[1],
+	        -time=>$temptime
+            );	    
+	}
+        else {
+            $cursor->warpto(
+                $wid{canvas},
+                $wid{canvas}->width  * $dir->{$direction}[0],
+                $wid{canvas}->height * $dir->{$direction}[1]
+            );
+        }
     }
     elsif($place eq 'Rectangle Item'){
         @coords = $wid{canvas}->coords('RECT');
-        $cursor->warpto(
-            $wid{canvas},
-            ($coords[2] - $coords[0])  * $dir->{$direction}[0] + $coords[0],
-            ($coords[3] - $coords[1])  * $dir->{$direction}[1] + $coords[1],
-        );
-
+	if ($timewarp) {
+            $temptime=$movetime*1000;
+            $cursor->moveto(
+                $wid{canvas},
+                ($coords[2] - $coords[0])  * $dir->{$direction}[0] + $coords[0],
+                ($coords[3] - $coords[1])  * $dir->{$direction}[1] + $coords[1],
+	        -time=>$temptime
+            );	    
+        }
+        else {
+            $cursor->warpto(
+                $wid{canvas},
+                ($coords[2] - $coords[0])  * $dir->{$direction}[0] + $coords[0],
+                ($coords[3] - $coords[1])  * $dir->{$direction}[1] + $coords[1],
+            );
+        }
     }
 }
 

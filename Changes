@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::CursorControl.
 
+0.03  Tue Oct 14 01:02:00 2003
+  - Suppress error messages on subsequent initiation calls
+  - *NEW* moveto function allows smooth warping of pointer
+  - Added to POD
+  - Changed widget demo to show new moveto method
+
 0.02  Wed Dec 11 15:08:33 2002
   - return 'first' CursorControl object on any subsequent calls
   - Added README file
@@ -7,6 +13,6 @@ Revision history for Perl extension Tk::CursorControl.
   - Minor changes to internal storage of a saved cursor
 
 0.01  Thu Dec  5 12:06:32 2002
-	- original version - never released
+  - original version - never released
 
 

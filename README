@@ -1,7 +1,7 @@
 What is Tk::CursorControl ?
 
 This module offers a Tk programmer the functionality of
-warping, confining or hiding a mouse cursor.
+warping, moving, confining or hiding a mouse cursor.
 
 For those of you who think this is a  scary thought. At ease!
 Have a look at some of the suggested uses in the POD.
@@ -34,7 +34,6 @@ CursorControl.pm
 trans_cur.xbm
 trans_cur.mask
 
-
 NOTE: This distribution comes with a 'widget' demonstration which
 should be available after a make install. If you wish to view this
 demo during the install stage, do a:
@@ -53,6 +52,6 @@ Send bug reports, comments and suggestions to dunniganj@cpan.org.
 
 Enjoy!
 
-Copyright (c) 2002 Jack Dunnigan. All rights reserved.
+Copyright (c) 2002, 2003 Jack Dunnigan. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.

@@ -5,7 +5,7 @@ use Tk 800.015;
 use Carp;
 use strict;
 
-$Tk::CursorControl::VERSION='0.2';
+$Tk::CursorControl::VERSION='0.3';
 
 my $AlreadyInit=0;
 my $CurrentObject=0;
@@ -42,8 +42,10 @@ sub new
   }
   else {
     ++ ${ $self->{_Init} }; # DESTROY will be called, so increment anyway
-    carp "A $class object has ALREADY been created !";
-    carp "The object returned is the original object for $class";
+    # These error messages are now suppressed - JD October 13, 2003
+    # Thanks for the suggestion Ala.
+    ### carp "A $class object has ALREADY been created !";
+    ### carp "The object returned is the original object for $class";
     # This means that either a module already called Tk::CursorControl on behalf
     # of the user (i.e. via a 'use SomeModule' where the code within SomeModule
     # creates a Tk::CursorControl object ---OR--- the programmer didn't read the 
@@ -137,6 +139,122 @@ sub show{
     }
   }    
 }
+
+sub moveto {
+  # Similar to the warpto sub. Instead - we always use the root window coordinates
+  # So, all we are interested in is the starting x,y coordinates and the ending
+  # x,y coordinates. Most of the code is a copy and paste from the warpto sub.
+
+  my $self = shift;
+  my $w;
+  #parse the time off the arguments...there has to be a better way!
+  my $movetime = 1000; #default to 1 second (1000ms)
+  if (grep/time/,@_) {
+     my $i=0;
+     my $timefound;
+     map { if (/time/) {
+		splice @_,$i,1;
+		$timefound=pop(@_);
+		$movetime = $timefound if ($timefound=~/\d+/);
+		}
+	  $i++;
+	 } @_;
+  }
+
+  #minimum time allowed
+  $movetime = 25 if ($movetime < 25);
+
+  # Three ways of warping:
+  # 1. Pass a widget reference - default warp the cursor to the center.
+  # 2. Pass a widget reference and x,y value - warp the cursor to x,y of that widget.
+  # 3. Pass only an x,y coordinate (with no widget reference) then it is treated like
+  #    a screen coordinate.
+
+  my $finalx;
+  my $finaly;
+  my $startx = ${$self->{MAIN}}->pointerx;
+  my $starty = ${$self->{MAIN}}->pointery;
+
+  my $argnum = scalar (@_);
+  my $ref = ref($_[0]);
+  if ($ref and $ref=~/^Tk/){
+    $w = shift;
+    # Does the widget exist and is it mapped?
+    return unless ( $self->_check($w) );
+    
+    if ( $argnum == 1 ) {
+    #assume only a widget reference passed
+      $self->release if ( $self->{Confined} );
+    
+    #Get ROOT coordinates of the final position
+      $finalx = $w->rootx + ( $w->width  / 2 );
+      $finaly = $w->rooty + ( $w->height / 2 );
+
+    }
+    elsif ( $argnum == 3 ) {
+    #assume a widget reference AND x,y value passed
+      my $x = shift;
+      my $y = shift;
+  
+      $self->release if ( $self->{Confined} );
+    #warp pointer to x,y coordinate relative to widgets NW corner  
+      my $width = $w->width;
+      my $height = $w->height;
+      $x = 0 if ( $x < 0 );
+      $x = $width - 1 if ($x > $width);
+      $y = 0 if ( $y < 0 );
+      $y = $height -1 if ($y > $height);
+
+      $finalx = $w->rootx + $x;
+      $finaly = $w->rooty + $y;
+    }
+  } #end if $widget is passed
+  elsif  ( $argnum == 2 ) {
+    # Assume only an x,y value passed..
+	
+    my $X = shift;
+    my $Y = shift;
+    
+    $self->release if ( $self->{Confined} );
+
+    # Sanity check - don't warp beyond the screen. The window managers won't let you
+    # anyways - but we might as well not try!
+    my $sw = ${$self->{MAIN}}->screenwidth;
+    my $sh = ${$self->{MAIN}}->screenheight;
+
+    $X = 0 if ($X < 0);
+    $Y = 0 if ($Y < 0);
+    $X = $sw if ($X > $sw);
+    $Y = $sh if ($Y > $sh);
+
+    $finalx = $X;
+    $finaly = $Y;
+
+  }
+
+    return unless (defined $finalx and defined $finaly);
+
+    #finally "move" the cursor (based on time passed)
+    my $denom = $movetime/25;
+    my $deltax = ($finalx - $startx)/$denom;
+    my $deltay = ($finaly - $starty)/$denom;
+    my $interx=$startx;
+    my $intery=$starty;
+    for (my $i=1; $i<=$denom; $i++) {
+       $interx=$interx+$deltax;
+       $intery=$intery+$deltay;
+       $self->warpto($interx,$intery);
+       ${$self->{MAIN}}->update;
+
+       # Blocking is actually a good thing here.
+       ${$self->{MAIN}}->after(25);
+    }
+    # Now make sure we end up where we originally wanted !
+    # Round off errors may have crept in.
+    $self->warpto($finalx,$finaly);
+
+}
+
 
 sub warpto {
 
@@ -537,8 +655,11 @@ Tk::CursorControl - Manipulate the mouse cursor programmatically
     # show cursor again over $widget
     $cursor->show($widget);
 
-    # warp cursor to $widget
+    # warp cursor to $widget (jump)
     $cursor->warpto($widget);
+
+    # move cursor to $widget
+    $cursor->moveto($widget);
 
 =head1 DESCRIPTION
 
@@ -593,14 +714,29 @@ B<Note: S>how (capital S) can be used as well.
 
 =item I<$cursor>-E<gt>B<warpto>( $widget I<?x,y?>)
 
-Move the cursor to the specified I<(?x,y?)> position in $widget. If the x,y values
+Warp the cursor to the specified I<(?x,y?)> position in $widget. If the x,y values
 are not specified, then the I<center> of the widget is used as the target.
 
 OR
 
 =item I<$cursor>-E<gt>B<warpto>( X,Y )
 
-Move the cursor to the specified I<X,Y> screen coordinate.
+Warp the cursor to the specified I<X,Y> screen coordinate.
+
+=item I<$cursor>-E<gt>B<moveto>( $widget I<?x,y?>, -time=E<gt>I<integer in milliseconds>)
+
+Move the cursor to the specified I<(?x,y?)> position in $widget in I<-time> milliseconds.
+If the x,y values are not specified, then the I<center> of the widget is used as the
+target. The -time value defaults to 1000ms (1 second) if not specified. The smaller the
+time, the faster the cursor will move. The time given will not be exact. See bugs below.
+
+OR
+
+=item I<$cursor>-E<gt>B<moveto>( X,Y, -time=E<gt>I<integer in milliseconds>)
+
+Move the cursor to the specified I<X,Y> screen coordinate in I<-time> milliseconds.
+The -time value defaults to 1000ms (1 second) if not specified. The smaller the
+time, the faster the cursor will move. The time given will not be exact. See bugs below.
 
 =back
 
@@ -695,18 +831,35 @@ cursor I<look> like it is attached to the widget sides with a spring.
 On faster systems, while still there, this I<bouncing> type action
 is much less noticible.
 
+B<moveto>
+
+The time parameter passed to a moveto method will not be exact. The
+reason for this is because a crude L<Tk::After|Tk::After> command is
+used to I<wait> for a very short period. You will find that the
+actual time taken for the cursor to stop is alway slightly B<more>
+than the time you specified. This time difference will be greater
+on slower computers. The time error will also increase for higher
+time values.
+
+B<Other>
+
+Warping the cursor will cause problems for users of absolute location
+pointing devices (like graphics tablets). Users of graphics tablets
+should B<not> use this module.
+
 =head1 AUTHOR
 
 B<Jack Dunnigan> <dunniganj@cpan.org>.
 
-Copyright (c) 2002, Jack Dunnigan. All rights reserved.
+Copyright (c) 2002,2003 Jack Dunnigan. All rights reserved.
 
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
 My thanks to Tk gurus Steve Lidie and Slaven Rezic for their suggestions
 and their patches. This is my first module on CPAN and I appreciate
-their help.
+their help. Thanks to Ala Qumsieh for utilizing the power of my module
+in L<Tk::Toolbar|Tk::Toolbar>.
 
 =cut
 
