@@ -1,0 +1,12 @@
+Revision history for Perl extension Tk::CursorControl.
+
+0.02  Wed Dec 11 15:08:33 2002
+  - return 'first' CursorControl object on any subsequent calls
+  - Added README file
+  - Added to POD
+  - Minor changes to internal storage of a saved cursor
+
+0.01  Thu Dec  5 12:06:32 2002
+	- original version - never released
+
+
