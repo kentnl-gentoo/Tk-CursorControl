@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::CursorControl.
 
+0.04  Tue Apr 25 12:24:38 2004
+  - Changed the demo to put widgets into a separate frame
+    in order to work with Slaven's changes to the widgetdemo
+    for Tk804.xxx
+  - *perltidy* ed source coded - otherwise *NO* changes from v0.3
+
 0.03  Tue Oct 14 01:02:00 2003
   - Suppress error messages on subsequent initiation calls
   - *NEW* moveto function allows smooth warping of pointer
